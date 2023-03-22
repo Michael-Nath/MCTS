@@ -3,10 +3,15 @@ from games.tictactoe.Game import Game
 from pprint import pprint
 import numpy as np
 
+X_MARK_INDICATOR = 1
+O_MARK_INDICATOR = 0
+NO_MARK_INDICATOR = -1
+GRID_ROWS = 3
+GRID_COLS = 3 
+
 class TicTacToe(Game):
     def __init__(self):
-        # create 3 x 3 grid where 0s represent a Os and 1s represent Xs
-        self.board = np.full((3,3), -1)
+        self.board = np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)
         super().__init__(self.board)
     
     def mark_move(self, player: TicTacToePlayer, row, col):
@@ -14,36 +19,36 @@ class TicTacToe(Game):
         self.board[row, col] = translated_mark
      
     def translate_mark(self, mark) -> int:
-        return 1 if mark == 'X' else 0
+        return X_MARK_INDICATOR if mark == 'X' else O_MARK_INDICATOR
 
     def get_init_game_state(self) -> np.ndarray:
-        return np.full((3,3), -1)
+        return np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)
 
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
     def is_terminal_state(self, state) -> bool:
         # Check if any of the rows are filled with same mark. 
-        if  len(np.unique(state[0][state[0] != '_'])) == 1 or \
-            len(np.unique(state[1][state[1] != '_'])) == 1 or \
-            len(np.unique(state[2][state[2] != '_'])) == 1:
-                return True
-        # Check if any of the cols are filled with same mark.
-        if  len(np.unique(state[:, 0][state[:, 0] != '_'])) == 1 or \
-            len(np.unique(state[:, 1][state[:, 1] != '_'])) == 1 or \
-            len(np.unique(state[:, 2][state[:, 2] != '_'])) == 1:
-                return True
-        # check if any of the diagonals are filled with same mark.
-        if  len(np.unique(state.diagonal()[state.diagonal() != '_'])) == 1 or \
-            len(np.unique(np.fliplr(state).diagonal()[np.fliplr(state).diagonal() != '_'])) == 1:
-                return True
+        unique_row_counts = [len(np.unique(row)) for row in state if NO_MARK_INDICATOR not in row]
+        if 1 in unique_row_counts:
+            return True
+        unique_col_counts = [len(np.unique(col)) for col in state.T if NO_MARK_INDICATOR not in col]
+        if 1 in unique_col_counts:
+            return True
+        unique_tl_br_diagonal = np.unique(state.diagonal())
+        if len(unique_tl_br_diagonal) == 1 and NO_MARK_INDICATOR not in unique_tl_br_diagonal:
+            return True
+        unique_bl_tr_diagonal = np.fliplr(state).diagonal()
+        if len(unique_bl_tr_diagonal) == 1 and NO_MARK_INDICATOR not in unique_bl_tr_diagonal:
+            return True
+
         return False
 
     def __str__(self) -> str:
         stringified_board = self.board.copy().astype("object")
-        stringified_board[stringified_board == 1] = "X"
-        stringified_board[stringified_board == 0] = "O"
-        stringified_board[stringified_board == -1] = "_"
+        stringified_board[stringified_board == X_MARK_INDICATOR] = "X"
+        stringified_board[stringified_board == O_MARK_INDICATOR] = "O"
+        stringified_board[stringified_board == NO_MARK_INDICATOR] = "_"
         return np.array2string(stringified_board)
     
 if __name__ == "__main__":
