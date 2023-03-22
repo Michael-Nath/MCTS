@@ -16,8 +16,19 @@ class NaiveMCTS():
 
     def print_game_object(self):
         print(self.game_obj)
+    
+    def perform_lookahead(self, root):
+        '''
+        This is the selection part of the tree search. Given a root node
+        representing the current game state, carve out a path through the game
+        tree following the UCB1 heuristic.  
+        '''
+        
+        # determine if root is terminal (game state is deciding)
+        if self.game_obj.is_terminal_state(root):
+            return
+
 
     def step(self):
-        self.root = self.game_obj.get_current_game_state();
-        print(self.root)
-
+        self.root = self.game_obj.get_current_game_state()
+        perform_lookahead()

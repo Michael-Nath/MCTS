@@ -7,6 +7,8 @@ class Game:
         raise NotImplementedError
     def get_init_game_state(self):
         raise NotImplementedError
+    def is_terminal_state(self):
+        raise NotImplementedError
     def get_current_game_state(self):
         raise NotImplementedError
 

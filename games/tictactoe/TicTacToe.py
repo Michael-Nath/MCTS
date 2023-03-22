@@ -22,8 +22,25 @@ class TicTacToe(Game):
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
+    def is_terminal_state(self, state) -> bool:
+        # Check if any of the rows are filled with same mark. 
+        if  len(np.unique(state[0][state[0] != '_'])) == 1 or \
+            len(np.unique(state[1][state[1] != '_'])) == 1 or \
+            len(np.unique(state[2][state[2] != '_'])) == 1:
+                return True
+        # Check if any of the cols are filled with same mark.
+        if  len(np.unique(state[:, 0][state[:, 0] != '_'])) == 1 or \
+            len(np.unique(state[:, 1][state[:, 1] != '_'])) == 1 or \
+            len(np.unique(state[:, 2][state[:, 2] != '_'])) == 1:
+                return True
+        # check if any of the diagonals are filled with same mark.
+        if  len(np.unique(state.diagonal()[state.diagonal() != '_'])) == 1 or \
+            len(np.unique(np.fliplr(state).diagonal()[np.fliplr(state).diagonal() != '_'])) == 1:
+                return True
+        return False
+
     def __str__(self) -> str:
-        stringified_board = self.board.copy()
+        stringified_board = self.board.copy().astype("object")
         stringified_board[stringified_board == 1] = "X"
         stringified_board[stringified_board == 0] = "O"
         stringified_board[stringified_board == -1] = "_"
