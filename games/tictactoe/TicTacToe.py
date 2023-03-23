@@ -15,34 +15,52 @@ class TicTacToe(Game):
         super().__init__(self.board)
     
     def mark_move(self, player: TicTacToePlayer, row, col):
-        translated_mark = self.translate_mark(player.letter)
+        translated_mark = self.mark_to_indicator(player.letter)
         self.board[row, col] = translated_mark
      
-    def translate_mark(self, mark) -> int:
+    def mark_to_indicator(self, mark) -> int:
         return X_MARK_INDICATOR if mark == 'X' else O_MARK_INDICATOR
 
+    def indicator_to_mark(self, indicator) -> str:
+        if indicator == X_MARK_INDICATOR:
+            return 'X'
+        if indicator == O_MARK_INDICATOR:
+            return 'O'
+        return '_'
     def get_init_game_state(self) -> np.ndarray:
         return np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)
 
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
-    def is_terminal_state(self, state) -> bool:
-        # Check if any of the rows are filled with same mark. 
-        unique_row_counts = [len(np.unique(row)) for row in state if NO_MARK_INDICATOR not in row]
-        if 1 in unique_row_counts:
-            return True
-        unique_col_counts = [len(np.unique(col)) for col in state.T if NO_MARK_INDICATOR not in col]
-        if 1 in unique_col_counts:
-            return True
+    def is_terminal_state(self, state): 
+        for i in range(GRID_ROWS):
+            row_no_dups = np.unique(state[i])
+            if NO_MARK_INDICATOR in row_no_dups:
+                continue
+            if len(row_no_dups) == 1:
+                return (True, self.indicator_to_mark(row_no_dups[0]))
+
+        for i in range(GRID_COLS):
+            col_no_dups = np.unique(state[:, i])
+            if NO_MARK_INDICATOR in col_no_dups:
+                continue
+            if len(col_no_dups) == 1:
+                return (True, self.indicator_to_mark(col_no_dups[0]))
+
         unique_tl_br_diagonal = np.unique(state.diagonal())
         if len(unique_tl_br_diagonal) == 1 and NO_MARK_INDICATOR not in unique_tl_br_diagonal:
-            return True
-        unique_bl_tr_diagonal = np.fliplr(state).diagonal()
-        if len(unique_bl_tr_diagonal) == 1 and NO_MARK_INDICATOR not in unique_bl_tr_diagonal:
-            return True
+            return (True, self.indicator_to_mark(unique_tl_br_diagonal[0]))
 
-        return False
+        unique_bl_tr_diagonal = np.unique(np.fliplr(state).diagonal())
+        if len(unique_bl_tr_diagonal) == 1 and NO_MARK_INDICATOR not in unique_bl_tr_diagonal:
+            return (True, self.indicator_to_mark(unique_bl_tr_diagonal[0]))
+
+        # Check if the grid is completely marked up. Control only reaches here if no row/col is dominated by a single mark. 
+        if NO_MARK_INDICATOR not in state.flatten():
+            return (True, '_')
+
+        return (False, None)
 
     def __str__(self) -> str:
         stringified_board = self.board.copy().astype("object")
