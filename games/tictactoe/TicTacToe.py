@@ -76,6 +76,13 @@ class TicTacToe(Game):
 
         return (False, None)
 
+    def pretty_print_grid(self, grid):
+        stringified_board = grid.copy().astype("object")
+        stringified_board[stringified_board == X_MARK_INDICATOR] = "X"
+        stringified_board[stringified_board == O_MARK_INDICATOR] = "O"
+        stringified_board[stringified_board == NO_MARK_INDICATOR] = "_" 
+        print(np.array2string(stringified_board))
+    
     def __str__(self) -> str:
         stringified_board = self.board.copy().astype("object")
         stringified_board[stringified_board == X_MARK_INDICATOR] = "X"

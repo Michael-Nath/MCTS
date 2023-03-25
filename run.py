@@ -14,10 +14,12 @@ policy = RandomTTTPolicy()
 # TESTING IF STEP FUNCTION WORKS
 bot = TicTacToePlayer("X")
 
-for _ in range(5):
+for _ in range(1):
     random_row = np.random.randint(0, NUM_ROWS)
     random_col = np.random.randint(0, NUM_COLS)
     tictactoe_game.mark_move(bot, random_row, random_col)
 
 print(tictactoe_game)
-mcts.step()
+for _ in range(5):
+    mcts.step()
+print(mcts)

@@ -2,9 +2,7 @@ import numpy as np
 from trees.MCTSNode import MCTSNode
 from games.tictactoe.Game import Game
 from collections import deque
-from pprint import pprint
 from policies.Policy import Policy
-from policies.RandomPolicy import RandomTTTPolicy
 from utils import Outcome
 """
 file: NaiveMCTS.py
@@ -26,9 +24,11 @@ class NaiveMCTS():
         # We begin with the initial state of the game we're playing
         self.root = MCTSNode(init_state)
         self.mark = mark
-        self.path = deque([])
+        self.path: deque[MCTSNode] = deque([])
         self.opponent_mark = opponent_mark
         self.playout_policy = playout_policy
+
+        self.memory: dict[str: MCTSNode] = dict()
 
     def perform_lookahead(self, root):
         '''
@@ -61,15 +61,26 @@ class NaiveMCTS():
         return playout_node
 
     def perform_playout(self, playout_node: MCTSNode) -> Outcome:
-        copy_of_current_game_state = playout_node.game_state.copy()
+        copy_of_cur_game_state = playout_node.game_state.copy()
         opponent_turn = playout_node.is_opponent_turn
-        while self.game_obj.is_terminal_state(copy_of_current_game_state)[0] == False:
+        while self.game_obj.is_terminal_state(copy_of_cur_game_state)[0] == False:
             # simulate moves (for both MCTS and opponent) according to specified policy
-            row, col = self.playout_policy.select_action(copy_of_current_game_state)
-            copy_of_current_game_state[row, col] = self.opponent_mark if opponent_turn else self.mark
+            row, col = self.playout_policy.select_action(copy_of_cur_game_state)
+            copy_of_cur_game_state[row, col] = self.opponent_mark if opponent_turn else self.mark
             opponent_turn = not opponent_turn
-        winner = self.game_obj.is_terminal_state(copy_of_current_game_state)[1]
-        print(winner)
+        winner = self.game_obj.is_terminal_state(copy_of_cur_game_state)[1]
+        if winner == self.mark:
+            return Outcome.WIN
+        elif winner == self.opponent_mark:
+            return Outcome.LOSS
+        return Outcome.DRAW
+    
+    def backpropagate_outcome(self, outcome: Outcome):
+        # for each node in the path from root to non-terminal leaf, update its stored statistics.
+        for node in self.path:
+            node.update_stats(outcome)
+        
+    
     def step(self):
         '''
         This is equivalent to a human player `thinking` about what move to make,
@@ -78,7 +89,12 @@ class NaiveMCTS():
         '''
 
         # We begin planning by examining the current state of the game. 
-        self.root = MCTSNode(self.game_obj.get_current_game_state(), is_opponent=True)
+        stringified_current_game_state = np.array2string(self.game_obj.get_current_game_state())
+        self.root = self.memory.get(stringified_current_game_state, None)
+        if self.root is None:
+            self.root = self.memory[stringified_current_game_state] = \
+            MCTSNode(self.game_obj.get_current_game_state(), is_opponent=True)
+
         self.perform_lookahead(self.root)
         # At this point, self.path should be populated with a carve-out of game tree.
         leaf_node = self.path[-1]
@@ -91,4 +107,11 @@ class NaiveMCTS():
         self.create_children_for_node(leaf_node)
         playout_node = self.determine_playout_node(leaf_node)
         # Now we perform a playout from this playout node, backpropagating after playout completion.
-        self.perform_playout(playout_node)
+        outcome = self.perform_playout(playout_node)
+        # Update internal statistics of all nodes in carved out path.
+        self.backpropagate_outcome(outcome)
+        # Flush out path to prepare for next iteration of step().
+    
+    def __str__(self):
+        return self.root.__str__()
+    
