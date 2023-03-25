@@ -13,13 +13,32 @@ policy = RandomTTTPolicy()
 
 # TESTING IF STEP FUNCTION WORKS
 bot = TicTacToePlayer("X")
+MCTS_player = TicTacToePlayer("O")
 
-for _ in range(1):
-    random_row = np.random.randint(0, NUM_ROWS)
-    random_col = np.random.randint(0, NUM_COLS)
-    tictactoe_game.mark_move(bot, random_row, random_col)
+    
+while tictactoe_game.is_terminal_state(tictactoe_game.get_current_game_state())[0] == False:
+    bot_action = policy.select_action(tictactoe_game.get_current_game_state())
+    tictactoe_game.mark_move(bot, bot_action[0], bot_action[1])
+    print(tictactoe_game)
+    if tictactoe_game.is_terminal_state(tictactoe_game.get_current_game_state())[0]:
+        break
+    for _ in range(10000):
+        mcts.step()
+    action = mcts.make_move()
+    tictactoe_game.mark_move(MCTS_player, action[0], action[1])
+    print(tictactoe_game)
 
+print()
+print("TICTACTOE FINAL GAME STATE:")
 print(tictactoe_game)
-for _ in range(5):
-    mcts.step()
-print(mcts)
+
+_, winner = tictactoe_game.is_terminal_state(tictactoe_game.get_current_game_state())
+if winner == 1:
+    winner = "BOT"
+elif winner == 0:
+    winner = "MCTS"
+else:
+    print(f"It is a TIE!")
+    exit()    
+print(f"Winner is {winner}!")
+

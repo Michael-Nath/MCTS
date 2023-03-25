@@ -2,8 +2,11 @@ import numpy as np
 from trees.MCTSNode import MCTSNode
 from games.tictactoe.Game import Game
 from collections import deque
+from players.Player import Player
 from policies.Policy import Policy
 from utils import Outcome
+import random 
+
 """
 file: NaiveMCTS.py
 Author: Michael D. Nath
@@ -11,7 +14,7 @@ Author: Michael D. Nath
 NaiveMCTS is the MCTS algorithm as described in its Wikipedia page. 
 """
 
-class NaiveMCTS():
+class NaiveMCTS(Player):
     def __init__(self, game: Game, mark, opponent_mark, playout_policy: Policy):
         """
         Initializes the Naive MCTS algorithm with a game for it to play.
@@ -41,25 +44,28 @@ class NaiveMCTS():
         # Stop search if we are at a leaf node.
         if (root.is_leaf()):
             return
-        
-    def create_children_for_node(self, node: MCTSNode):
-        # get all possible next states
-        possible_next_states = self.game_obj.get_next_game_states(node.game_state, self.mark)
-        node.add_children(possible_next_states) 
-    
-    def determine_playout_node(self, parent_node: MCTSNode) -> MCTSNode:
         # For now we will use the UCB1 heuristic.
         C = 1
-        playout_node = None
+        most_promising_node = None
         best_value = 0
-        for child in parent_node.children_states:
+        for child in root.children_states:
             exploitation_value = child.n_won / child.n_visited
-            exploration_bonus = C * np.sqrt(np.log(parent_node.n_visited) / child.n_visited)
+            exploration_bonus = C * np.sqrt(np.log(root.n_visited) / child.n_visited)
             if (exploitation_value + exploration_bonus) >= best_value:
                 best_value = exploitation_value + exploration_bonus
-                playout_node = child
-        return playout_node
+                most_promising_node = child 
+        self.perform_lookahead(most_promising_node) 
 
+    def create_children_for_node(self, node: MCTSNode):
+        # get all possible next states
+        possible_next_states, input_actions = \
+        self.game_obj.get_next_game_states(node.game_state, self.mark)
+        node.add_children(possible_next_states, input_actions) 
+    
+    def determine_playout_node(self, parent_node: MCTSNode) -> MCTSNode:
+        # For now we will just pick uniformly among the children of the former leaf node.
+        return random.choice(list(parent_node.children_states))
+    
     def perform_playout(self, playout_node: MCTSNode) -> Outcome:
         copy_of_cur_game_state = playout_node.game_state.copy()
         opponent_turn = playout_node.is_opponent_turn
@@ -78,8 +84,7 @@ class NaiveMCTS():
     def backpropagate_outcome(self, outcome: Outcome):
         # for each node in the path from root to non-terminal leaf, update its stored statistics.
         for node in self.path:
-            node.update_stats(outcome)
-        
+            node.update_stats(outcome) 
     
     def step(self):
         '''
@@ -87,13 +92,20 @@ class NaiveMCTS():
         given their opponent's most recent move. Here, the core assumption is that
         this is called right after an opponent has made a move. 
         '''
+       
+        # Edge case: if current game state is already deciding, no point in planning.
+        if self.game_obj.is_terminal_state(self.game_obj.get_current_game_state())[0]:
+            return 
+        
+        # Flush out old path to prepare for next iteration of step().
+        self.path = deque([])
 
         # We begin planning by examining the current state of the game. 
         stringified_current_game_state = np.array2string(self.game_obj.get_current_game_state())
         self.root = self.memory.get(stringified_current_game_state, None)
         if self.root is None:
             self.root = self.memory[stringified_current_game_state] = \
-            MCTSNode(self.game_obj.get_current_game_state(), is_opponent=True)
+            MCTSNode(self.game_obj.get_current_game_state(), None, is_opponent=True)
 
         self.perform_lookahead(self.root)
         # At this point, self.path should be populated with a carve-out of game tree.
@@ -102,16 +114,36 @@ class NaiveMCTS():
         # determine if root is terminal (game state is deciding)
         is_terminal, winner = self.game_obj.is_terminal_state(leaf_node.game_state)
         if is_terminal:
-            print(f"The game state right now is terminal with winner {winner}.")
-            # return
-        self.create_children_for_node(leaf_node)
-        playout_node = self.determine_playout_node(leaf_node)
-        # Now we perform a playout from this playout node, backpropagating after playout completion.
-        outcome = self.perform_playout(playout_node)
+            return
+        else:
+            self.create_children_for_node(leaf_node)
+            playout_node = self.determine_playout_node(leaf_node)
+            # Include this playout node as an additional target of backpropagation.
+            self.path.append(playout_node)
+            # Now we perform a playout from this playout node, backpropagating after playout completion.
+            outcome = self.perform_playout(playout_node)
         # Update internal statistics of all nodes in carved out path.
         self.backpropagate_outcome(outcome)
-        # Flush out path to prepare for next iteration of step().
     
+    def make_move(self):
+        # Perform a one-step lookahead and greedily choose the move to take.
+        max_value = 0
+        best_child = None
+        for child in self.root.children_states:
+            if (child.get_value() >= max_value):
+                max_value = child.get_value()
+                best_child = child
+        return best_child.input_action
+              
+    def internal_print_game_tree_(self, root: MCTSNode):
+        if self.game_obj.is_terminal_state(root.game_state)[0]:
+            return
+        print(root)
+        for child in root.children_states:
+            self.internal_print_game_tree_(child)
+        
+    def print_game_tree(self):
+        self.internal_print_game_tree_(self.root)    
+        
     def __str__(self):
         return self.root.__str__()
-    

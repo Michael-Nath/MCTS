@@ -39,13 +39,15 @@ class TicTacToe(Game):
         Returns all reachable game states from given state, and marked with `mark`
         '''
         pos_next_states = []
+        input_actions = []
         for i in range(GRID_ROWS):
             for j in range(GRID_COLS):
                 if state[i,j] == NO_MARK_INDICATOR:
                     new_state = state.copy()
                     new_state[i,j] = mark
                     pos_next_states.append(new_state)
-        return pos_next_states
+                    input_actions.append([i,j])
+        return pos_next_states, input_actions
         
     def is_terminal_state(self, state): 
         for i in range(GRID_ROWS):
