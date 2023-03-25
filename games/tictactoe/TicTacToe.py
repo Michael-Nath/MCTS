@@ -53,26 +53,26 @@ class TicTacToe(Game):
             if NO_MARK_INDICATOR in row_no_dups:
                 continue
             if len(row_no_dups) == 1:
-                return (True, self.indicator_to_mark(row_no_dups[0]))
+                return (True, row_no_dups[0])
 
         for i in range(GRID_COLS):
             col_no_dups = np.unique(state[:, i])
             if NO_MARK_INDICATOR in col_no_dups:
                 continue
             if len(col_no_dups) == 1:
-                return (True, self.indicator_to_mark(col_no_dups[0]))
+                return (True, col_no_dups[0])
 
         unique_tl_br_diagonal = np.unique(state.diagonal())
         if len(unique_tl_br_diagonal) == 1 and NO_MARK_INDICATOR not in unique_tl_br_diagonal:
-            return (True, self.indicator_to_mark(unique_tl_br_diagonal[0]))
+            return (True, unique_tl_br_diagonal[0])
 
         unique_bl_tr_diagonal = np.unique(np.fliplr(state).diagonal())
         if len(unique_bl_tr_diagonal) == 1 and NO_MARK_INDICATOR not in unique_bl_tr_diagonal:
-            return (True, self.indicator_to_mark(unique_bl_tr_diagonal[0]))
+            return (True, unique_bl_tr_diagonal[0])
 
         # Check if the grid is completely marked up. Control only reaches here if no row/col is dominated by a single mark. 
         if NO_MARK_INDICATOR not in state.flatten():
-            return (True, '_')
+            return (True, -1)
 
         return (False, None)
 

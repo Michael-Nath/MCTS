@@ -1,8 +1,9 @@
 from games.tictactoe import TicTacToe
 import numpy as np
 import random
+from policies.Policy import Policy
 
-class RandomTTTPolicy:
+class RandomTTTPolicy(Policy):
     def __init__(self):
         pass
     def select_action(self, state: np.ndarray):

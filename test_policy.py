@@ -1,4 +1,4 @@
-from policies.random_policy import RandomTTTPolicy, main
+from policies.RandomPolicy import RandomTTTPolicy, main
 
 if __name__ == "__main__":
     random_policy = RandomTTTPolicy()
