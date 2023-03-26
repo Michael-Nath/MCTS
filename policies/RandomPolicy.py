@@ -4,6 +4,10 @@ import random
 from policies.Policy import Policy
 
 class RandomTTTPolicy(Policy):
+    """
+    This implements a random tic-tac-toe policy where given a state, 
+    the next move is chosen uniformly among the open spots in the game board.
+    """
     def __init__(self):
         pass
     def select_action(self, state: np.ndarray):

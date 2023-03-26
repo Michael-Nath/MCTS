@@ -1,21 +1,22 @@
 import numpy as np
 from utils import Outcome
+from games.Game import Game
 
 class MCTSNode:
-    def __init__(self, game_state, input_action = None, is_opponent=False):
-        self.game_state = game_state
+    def __init__(self, game_state: Game, input_action = None, is_opponent=False):
+        self.game_obj: Game = game_state
         self.n_won = 0
         self.n_visited = 1
         self.input_action = input_action
         self.is_opponent_turn = is_opponent
         self.children_states: set[MCTSNode] = set()
 
-    def add_child(self, state, input_action):
-        new_child = MCTSNode(state, input_action=input_action, is_opponent=(not self.is_opponent_turn))
+    def add_child(self, game_obj, input_action):
+        new_child = MCTSNode(game_obj, input_action=input_action, is_opponent=(not self.is_opponent_turn))
         self.children_states.add(new_child)
     
-    def add_children(self, states, input_actions):
-        for idx, child in enumerate(states):
+    def add_children(self, game_objs, input_actions):
+        for idx, child in enumerate(game_objs):
             self.add_child(child, input_actions[idx]) 
     
     def get_value(self):
@@ -36,5 +37,5 @@ class MCTSNode:
         return len(self.children_states) == 0
 
     def __str__(self):
-        stringified_state = np.array2string(self.game_state.flatten())
+        stringified_state = str(self.game_state)
         return f"s = {stringified_state} | W(s) = {self.n_won} | N(s) = {self.n_visited}"

@@ -1,5 +1,7 @@
 from games.tictactoe.TicTacToePlayer import TicTacToePlayer
-from games.tictactoe.Game import Game
+from games.Player import Player
+from games.Game import Game
+from typing import Union
 from pprint import pprint
 import numpy as np
 
@@ -9,16 +11,20 @@ NO_MARK_INDICATOR = -1
 GRID_ROWS = 3
 GRID_COLS = 3 
 
-class TicTacToe(Game):
-    def __init__(self):
-        self.board = np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)
+class TicTacToeBoard(Game):
+    def __init__(self, configuration:Union[np.ndarray, None] = None):
+        if configuration is None:
+            self.board = np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)
+        else:
+            self.board = configuration
         super().__init__(self.board)
     
-    def mark_move(self, player: TicTacToePlayer, row, col):
-        translated_mark = self.mark_to_indicator(player.letter)
+    def mark_move(self, player: Player, row, col):
+        translated_mark = TicTacToeBoard.mark_to_indicator(player.mark)
         self.board[row, col] = translated_mark
-     
-    def mark_to_indicator(self, mark) -> int:
+        
+    @staticmethod 
+    def mark_to_indicator(mark) -> int:
         return X_MARK_INDICATOR if mark == 'X' else O_MARK_INDICATOR
 
     def indicator_to_mark(self, indicator) -> str:
@@ -28,13 +34,17 @@ class TicTacToe(Game):
             return 'O'
         return '_'
 
-    def get_init_game_state(self) -> np.ndarray:
+    def copy_(self) -> Game:
+        return TicTacToeBoard(self.board.copy())
+    
+    @staticmethod
+    def get_init_game_state() -> np.ndarray:
         return np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)
 
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
-    def get_next_game_states(self, state, mark):
+    def get_next_game_states(self, mark):
         '''
         Returns all reachable game states from given state, and marked with `mark`
         '''
@@ -42,43 +52,46 @@ class TicTacToe(Game):
         input_actions = []
         for i in range(GRID_ROWS):
             for j in range(GRID_COLS):
-                if state[i,j] == NO_MARK_INDICATOR:
-                    new_state = state.copy()
+                if self.board[i,j] == NO_MARK_INDICATOR:
+                    new_state = self.board.copy()
                     new_state[i,j] = mark
-                    pos_next_states.append(new_state)
+                    new_board_obj = TicTacToeBoard(new_state)
+                    pos_next_states.append(new_board_obj)
                     input_actions.append([i,j])
         return pos_next_states, input_actions
         
-    def is_terminal_state(self, state): 
+    @staticmethod
+    def is_terminal_state(game_obj: Game): 
         for i in range(GRID_ROWS):
-            row_no_dups = np.unique(state[i])
+            row_no_dups = np.unique(game_obj.state[i])
             if NO_MARK_INDICATOR in row_no_dups:
                 continue
             if len(row_no_dups) == 1:
                 return (True, row_no_dups[0])
 
         for i in range(GRID_COLS):
-            col_no_dups = np.unique(state[:, i])
+            col_no_dups = np.unique(game_obj.state[:, i])
             if NO_MARK_INDICATOR in col_no_dups:
                 continue
             if len(col_no_dups) == 1:
                 return (True, col_no_dups[0])
 
-        unique_tl_br_diagonal = np.unique(state.diagonal())
+        unique_tl_br_diagonal = np.unique(game_obj.state.diagonal())
         if len(unique_tl_br_diagonal) == 1 and NO_MARK_INDICATOR not in unique_tl_br_diagonal:
             return (True, unique_tl_br_diagonal[0])
 
-        unique_bl_tr_diagonal = np.unique(np.fliplr(state).diagonal())
+        unique_bl_tr_diagonal = np.unique(np.fliplr(game_obj.state).diagonal())
         if len(unique_bl_tr_diagonal) == 1 and NO_MARK_INDICATOR not in unique_bl_tr_diagonal:
             return (True, unique_bl_tr_diagonal[0])
 
         # Check if the grid is completely marked up. Control only reaches here if no row/col is dominated by a single mark. 
-        if NO_MARK_INDICATOR not in state.flatten():
+        if NO_MARK_INDICATOR not in game_obj.state.flatten():
             return (True, -1)
 
         return (False, None)
 
-    def pretty_print_grid(self, grid):
+    @staticmethod
+    def pretty_print_grid(grid):
         stringified_board = grid.copy().astype("object")
         stringified_board[stringified_board == X_MARK_INDICATOR] = "X"
         stringified_board[stringified_board == O_MARK_INDICATOR] = "O"
@@ -93,7 +106,7 @@ class TicTacToe(Game):
         return np.array2string(stringified_board)
     
 if __name__ == "__main__":
-    board = TicTacToe()
+    board = TicTacToeBoard()
     player_one = TicTacToePlayer("X")
     board.mark_move(player_one, 0, 0)
     pprint(board.board) 

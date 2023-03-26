@@ -1,8 +1,8 @@
 import numpy as np
-from trees.MCTSNode import MCTSNode
-from games.tictactoe.Game import Game
+from MCTSNode import MCTSNode
+from games.Game import Game
+from games.Player import Player
 from collections import deque
-from players.Player import Player
 from policies.Policy import Policy
 from utils import Outcome
 import random 
@@ -20,8 +20,12 @@ class NaiveMCTS(Player):
         Initializes the Naive MCTS algorithm with a game for it to play.
 
         Args:
-        game (Game): This is a Game object that MCTS algorithm interfaces with.
+        game (Game): The `Game` object that the MCTS agent interfaces with.
+        mark (int): The int representation of the mark the MCTS agent can use to make moves.
+        opponent_mark (int): The int representation of the mark the opponent can use to make moves.
+        playout_policy: (Policy): The policy that the MCTS agent will follow when at a new state.
         """
+
         self.game_obj = game
         init_state = game.get_init_game_state()
         # We begin with the initial state of the game we're playing
@@ -31,6 +35,7 @@ class NaiveMCTS(Player):
         self.opponent_mark = opponent_mark
         self.playout_policy = playout_policy
 
+        # Maintain an "experience" of previously played game trees. Equivalent to MCTS "learning".
         self.memory: dict[str: MCTSNode] = dict()
 
     def perform_lookahead(self, root):
@@ -49,7 +54,11 @@ class NaiveMCTS(Player):
         most_promising_node = None
         best_value = 0
         for child in root.children_states:
-            exploitation_value = child.n_won / child.n_visited
+            # We wish to involve the statistic relevant to the MCTS agent. 
+            if not child.is_opponent_turn:
+                exploitation_value = child.n_won / child.n_visited
+            else:
+                exploitation_value = 1 - (child.n_won / child.n_visited)
             exploration_bonus = C * np.sqrt(np.log(root.n_visited) / child.n_visited)
             if (exploitation_value + exploration_bonus) >= best_value:
                 best_value = exploitation_value + exploration_bonus
@@ -59,7 +68,7 @@ class NaiveMCTS(Player):
     def create_children_for_node(self, node: MCTSNode):
         # get all possible next states
         possible_next_states, input_actions = \
-        self.game_obj.get_next_game_states(node.game_state, self.mark)
+        self.game_obj.get_next_game_states(self.mark)
         node.add_children(possible_next_states, input_actions) 
     
     def determine_playout_node(self, parent_node: MCTSNode) -> MCTSNode:
@@ -67,14 +76,14 @@ class NaiveMCTS(Player):
         return random.choice(list(parent_node.children_states))
     
     def perform_playout(self, playout_node: MCTSNode) -> Outcome:
-        copy_of_cur_game_state = playout_node.game_state.copy()
+        simulated_game_obj = playout_node.game_obj.copy_()
         opponent_turn = playout_node.is_opponent_turn
-        while self.game_obj.is_terminal_state(copy_of_cur_game_state)[0] == False:
+        while self.game_obj.is_terminal_state(simulated_game_obj)[0] == False:
             # simulate moves (for both MCTS and opponent) according to specified policy
-            row, col = self.playout_policy.select_action(copy_of_cur_game_state)
-            copy_of_cur_game_state[row, col] = self.opponent_mark if opponent_turn else self.mark
+            row, col = self.playout_policy.select_action(simulated_game_obj.board)
+            simulated_game_obj.state[row, col] = self.opponent_mark if opponent_turn else self.mark
             opponent_turn = not opponent_turn
-        winner = self.game_obj.is_terminal_state(copy_of_cur_game_state)[1]
+        winner = simulated_game_obj.is_terminal_state(simulated_game_obj)[1]
         if winner == self.mark:
             return Outcome.WIN
         elif winner == self.opponent_mark:
@@ -94,7 +103,7 @@ class NaiveMCTS(Player):
         '''
        
         # Edge case: if current game state is already deciding, no point in planning.
-        if self.game_obj.is_terminal_state(self.game_obj.get_current_game_state())[0]:
+        if self.game_obj.is_terminal_state(self.game_obj)[0]:
             return 
         
         # Flush out old path to prepare for next iteration of step().
@@ -105,14 +114,14 @@ class NaiveMCTS(Player):
         self.root = self.memory.get(stringified_current_game_state, None)
         if self.root is None:
             self.root = self.memory[stringified_current_game_state] = \
-            MCTSNode(self.game_obj.get_current_game_state(), None, is_opponent=True)
+            MCTSNode(self.game_obj, None, is_opponent=True)
 
         self.perform_lookahead(self.root)
         # At this point, self.path should be populated with a carve-out of game tree.
         leaf_node = self.path[-1]
         # We will construct the next game state from the terminal game state
         # determine if root is terminal (game state is deciding)
-        is_terminal, winner = self.game_obj.is_terminal_state(leaf_node.game_state)
+        is_terminal, winner = self.game_obj.is_terminal_state(leaf_node.game_obj)
         if is_terminal:
             return
         else:
@@ -136,7 +145,7 @@ class NaiveMCTS(Player):
         return best_child.input_action
               
     def internal_print_game_tree_(self, root: MCTSNode):
-        if self.game_obj.is_terminal_state(root.game_state)[0]:
+        if self.game_obj.is_terminal_state(root.game_obj)[0]:
             return
         print(root)
         for child in root.children_states:
