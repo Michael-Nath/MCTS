@@ -15,7 +15,7 @@ NaiveMCTS is the MCTS algorithm as described in its Wikipedia page.
 """
 
 class NaiveMCTS(Player):
-    def __init__(self, game: Game, mark, opponent_mark, playout_policy: Policy):
+    def __init__(self, game: Game, mark, opponent_mark, playout_policy: Policy, exploration_constant=1):
         """
         Initializes the Naive MCTS algorithm with a game for it to play.
 
@@ -34,6 +34,7 @@ class NaiveMCTS(Player):
         self.path: deque[MCTSNode] = deque([])
         self.opponent_mark = opponent_mark
         self.playout_policy = playout_policy
+        self.exploration_constant = exploration_constant
 
         # Maintain an "experience" of previously played game trees. Equivalent to MCTS "learning".
         self.memory: dict[str: MCTSNode] = dict()
@@ -50,7 +51,7 @@ class NaiveMCTS(Player):
         if (root.is_leaf()):
             return
         # For now we will use the UCB1 heuristic.
-        C = 1
+        C = self.exploration_constant
         most_promising_node = None
         best_value = 0
         for child in root.children_states:

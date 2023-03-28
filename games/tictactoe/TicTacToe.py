@@ -22,12 +22,15 @@ class TicTacToeBoard(Game):
     def mark_move(self, player: Player, row, col):
         translated_mark = TicTacToeBoard.mark_to_indicator(player.mark)
         self.board[row, col] = translated_mark
-        
+    
+    
+     
     @staticmethod 
     def mark_to_indicator(mark) -> int:
         return X_MARK_INDICATOR if mark == 'X' else O_MARK_INDICATOR
-
-    def indicator_to_mark(self, indicator) -> str:
+    
+    @staticmethod
+    def indicator_to_mark(indicator) -> str:
         if indicator == X_MARK_INDICATOR:
             return 'X'
         if indicator == O_MARK_INDICATOR:
