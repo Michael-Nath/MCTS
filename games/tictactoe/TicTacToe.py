@@ -47,22 +47,31 @@ class TicTacToeBoard(Game):
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
+    def get_next_game_state(self, action, mark):
+        '''
+        Returns the next game state (s') from the current state (s) after taking
+        `action`, and marked with `mark`
+        '''
+        new_state = self.board.copy()
+        new_state[tuple(action)] = mark
+        return TicTacToeBoard(new_state)
+    
     def get_next_game_states(self, mark):
         '''
         Returns all reachable game states from given state, and marked with `mark`
         '''
         pos_next_states = []
-        input_actions = []
-        for i in range(GRID_ROWS):
-            for j in range(GRID_COLS):
-                if self.board[i,j] == NO_MARK_INDICATOR:
-                    new_state = self.board.copy()
-                    new_state[i,j] = mark
-                    new_board_obj = TicTacToeBoard(new_state)
-                    pos_next_states.append(new_board_obj)
-                    input_actions.append([i,j])
+        input_actions = self.get_all_next_actions()
+        for action in input_actions:
+            new_board_obj = self.get_next_game_state(action, mark)
+            pos_next_states.append(new_board_obj)
+            input_actions.append(action)
         return pos_next_states, input_actions
-        
+    
+    def get_all_next_actions(self):
+        pos_indices = np.where(self.board == NO_MARK_INDICATOR)
+        return np.array(list(zip(pos_indices))).reshape(-1, 2)
+     
     @staticmethod
     def is_terminal_state(game_obj: Game): 
         for i in range(GRID_ROWS):

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 MCTS_INDICATOR = 1
 OPP_INDICATOR = 0
-N_TRIALS = 10
+N_TRIALS = 100
 
 def simulate(
     manual_play=False, 
@@ -86,8 +86,11 @@ def vary_num_tree_iterations(n_max_tree_iters):
     mcts_wins = np.array([])
     for n_tree_iters in n_iterations_set:
         mcts_wins = np.append(mcts_wins, run_experiments(n_tree_iters=n_tree_iters))
-    plt.plot(n_iterations_set, mcts_wins / 100)
+    plt.title("MCTS Win Percentage versus Computational Budget")
+    plt.xlabel("Budget (# Iterations)")
+    plt.ylabel(f"Win Percentage (n = {N_TRIALS})")
+    plt.plot(n_iterations_set, mcts_wins * 100 / N_TRIALS)
     plt.savefig("plots/n_tree_iters.png")
 
 if __name__ == "__main__":
-    vary_num_tree_iterations(10000)
+    vary_num_tree_iterations(100)

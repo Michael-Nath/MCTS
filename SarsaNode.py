@@ -3,18 +3,18 @@ import numpy as np
 from utils import Outcome
 from games.Game import Game
 
-class MCTSNode:
+class SarsaNode:
     def __init__(self, game_state: Game, input_action = None, is_opponent=False):
         self.game_obj: Game = game_state
         self.n_won = 0
         self.n_visited = 1
         self.input_action = input_action
         self.is_opponent_turn = is_opponent
-        self.children_states: set[MCTSNode] = set()
+        self.children_states: dict[Tuple[int, int]: SarsaNode]
 
     def add_child(self, game_obj, input_action):
-        new_child = MCTSNode(game_obj, input_action=input_action, is_opponent=(not self.is_opponent_turn))
-        self.children_states.add(new_child)
+        new_child = SarsaNode(game_obj, input_action=input_action, is_opponent=(not self.is_opponent_turn))
+        self.children_states[input_action] = new_child
     
     def add_children(self, game_objs, input_actions):
         for idx, child in enumerate(game_objs):

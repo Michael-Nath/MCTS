@@ -51,6 +51,12 @@ class Game:
     
     def get_next_game_states(self, state, mark):
         raise NotImplementedError
+    
+    def get_next_game_state(self, action, mark):
+        raise NotImplementedError
+    
+    def get_all_next_actions(self):
+        raise NotImplementedError
     def get_current_game_state(self):
         raise NotImplementedError
 
