@@ -20,6 +20,8 @@ class TicTacToeBoard(Game):
         super().__init__(self.board)
     
     def mark_move(self, player: Player, row, col):
+        if not self.is_move_valid_(row, col):
+            raise RuntimeError("Invalid row and/or column specified.")
         translated_mark = TicTacToeBoard.mark_to_indicator(player.mark)
         self.board[row, col] = translated_mark
         
@@ -58,6 +60,9 @@ class TicTacToeBoard(Game):
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
+    def is_move_valid_(self, row: int, col: int) -> bool:
+        return self.board[row, col] == NO_MARK_INDICATOR
+    
     def get_next_game_state(self, action: np.ndarray, mark: str):
         '''
         Returns the next game state (s') from the current state (s) after taking
@@ -76,12 +81,12 @@ class TicTacToeBoard(Game):
         for action in input_actions:
             new_board_obj = self.get_next_game_state(action, mark)
             pos_next_states.append(new_board_obj)
-            input_actions.append(action)
         return pos_next_states, input_actions
     
     def get_all_next_actions(self) -> List[List[int]]:
         pos_indices = np.where(self.board == NO_MARK_INDICATOR)
-        return np.array(list(zip(pos_indices))).reshape(-1, 2)
+        coords = list(np.array(list(zip(pos_indices[0], pos_indices[1]))).reshape(-1, 2)) 
+        return coords
      
     @staticmethod
     def is_terminal_state(game_obj: Game): 

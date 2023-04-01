@@ -1,3 +1,7 @@
+"""
+file: NaiveMCTS.py
+Author: Michael D. Nath
+"""
 import numpy as np
 from MCTSNode import MCTSNode
 from games.Game import Game
@@ -7,14 +11,24 @@ from policies.Policy import Policy
 from utils import Outcome
 import random 
 
-"""
-file: NaiveMCTS.py
-Author: Michael D. Nath
-
-NaiveMCTS is the MCTS algorithm as described in its Wikipedia page. 
-"""
-
 class NaiveMCTS(Player):
+    """
+    NaiveMCTS: A Monte Carlo Tree Search (MCTS) implementation for turn-based games
+    This module implements the NaiveMCTS class, a MCTS algorithm based on the description provided on the Wikipedia page. 
+    The class is tailored for turn-based games and can serve as an AI player, 
+    making decisions through game tree exploration using the UCB1 heuristic.
+
+    The NaiveMCTS class extends the `MCTSAgent` class and includes the following key methods:
+
+    `perform_lookahead()`: Traverses the game tree, selecting a path according to the UCB1 heuristic.
+    `create_children_for_node()`: Generates possible next game states for a given node.
+    `determine_playout_node()`: Identifies the node from which a playout will be performed.
+    `perform_playout()`: Simulates a game from a given node following a specified playout policy.
+    `backpropagate_outcome()`: Updates node statistics in the path based on a playout outcome.
+    `step()`: Executes an MCTS iteration, encompassing selection, simulation, expansion, and backpropagation.
+    `make_move()`: Chooses the optimal move according to the current game tree exploration.
+    Auxiliary methods for printing the game tree and converting it to a string representation are also provided. 
+    """
     def __init__(self, game: Game, mark, opponent_mark, playout_policy: Policy, exploration_constant=1):
         """
         Initializes the Naive MCTS algorithm with a game for it to play.
@@ -78,12 +92,16 @@ class NaiveMCTS(Player):
     
     def perform_playout(self, playout_node: MCTSNode) -> Outcome:
         simulated_game_obj = playout_node.game_obj.copy_()
-        opponent_turn = playout_node.is_opponent_turn
+        simulated_opponent = Player(self.opponent_mark)
+        is_opponent_turn = playout_node.is_opponent_turn
         while self.game_obj.is_terminal_state(simulated_game_obj)[0] == False:
             # simulate moves (for both MCTS and opponent) according to specified policy
             row, col = self.playout_policy.select_action(simulated_game_obj.board)
-            simulated_game_obj.state[row, col] = self.opponent_mark if opponent_turn else self.mark
-            opponent_turn = not opponent_turn
+            if is_opponent_turn:
+                simulated_game_obj.mark_move(simulated_opponent, row, col)
+            else:
+                simulated_game_obj.mark_move(self, row, col)
+            is_opponent_turn = not is_opponent_turn
         winner = simulated_game_obj.is_terminal_state(simulated_game_obj)[1]
         if winner == self.mark:
             return Outcome.WIN

@@ -6,22 +6,36 @@ from policies.Policy import Policy
 from utils import get_normalized_value
 from typing import List, Tuple, Callable
 
-"""
-file: SarsaMCTS.py
-Author: Michael D. Nath
-
-SarsaMCTS is a temporal difference (TD) powered variant of the Monte Carlo Tree Seach (MCTS) algorithm.
-In this variant, we leverage the SARSA TD method with eligibility traces.
-The algorithim below is a high-fidelity implementation of Sarsa-UCT(\lambda) 
-as described by Vodopivec et. al. in "On Monte Carlo Tree Search and Reinforcement Learning".
-
-SarsaMCTS is a reinforcement learning + monte carlo tree search algorithm. As such, 
-you may see ideas such as episode trajectories interwoven with monte carlo playouts.
-I have attempted to distinguish the RL parts and the search parts, but this algorithm is best 
-appreciated when piecing these components together.
-"""
-
 class SarsaMCTS(Player):
+    """
+    `SarsaMCTS` is a temporal difference (TD) powered variant of the Monte Carlo Tree Seach (MCTS) algorithm.
+    In this variant, we leverage the SARSA TD method with eligibility traces.
+    The algorithim below is a high-fidelity implementation of Sarsa-UCT(\lambda) 
+    as described by Vodopivec et. al. in "On Monte Carlo Tree Search and Reinforcement Learning".
+
+    `SarsaMCTS` is a class that combines the strengths of the Monte Carlo Tree Search (MCTS) algorithm and SARSA, 
+    a temporal difference (TD) learning method, to create a powerful reinforcement learning agent for playing games. 
+    The algorithm includes eligibility traces to improve the learning process and maintain the trajectory of the agent throughout the game.
+    The class `SarsaMCTS` inherits from `MCTSAgent`, taking several parameters, 
+    including the game object, player marks, a playout policy, exploration constant, learning rate, discount factor, and trace decay.
+
+    Key methods in the SarsaMCTS class:
+
+    `ucb1_tree_policy_`: This method calculates the Upper Confidence Bound (UCB1) heuristic to guide the tree traversal and selects the next best action based on the exploration-exploitation trade-off.
+    `generate_episode_`: This method generates an episode (trajectory) by following either the tree policy (if the state is memorized) or the playout policy (if the state is new). This approach allows the agent to benefit from both MCTS playouts and reward-seeking frameworks.
+    `expand_tree_`: This method expands the game tree based on the current trajectory, updating the memory with the new game state as a child of its predecessor state. It efficiently adapts the representation policy of the agent.
+    `backup_td_errors_`: This method performs MCTS backpropagation using the TD learning approach, leveraging eligibility traces to average all possible n-step returns from a state. This method updates the values of all states participating in the trajectory and adjusts the best and worst returns for normalization.
+    `step`: This public method performs one iteration of the SarsaMCTS search. It's equivalent to the agent thinking about its next move after an opponent's move. It handles the selection/simulation, expansion, and backpropagation phases.
+    `make_move`: This public method returns the most promising move for the agent based on its search.
+    `print_game_tree`: This public method prints out the game tree for debugging purposes.
+
+    By leveraging the strengths of MCTS and SARSA, the SarsaMCTS class provides a robust and flexible reinforcement learning agent that can efficiently adapt and learn in a variety of game environments.
+
+    Since SarsaMCTS is a reinforcement learning + monte carlo tree search algorithm, 
+    you may see ideas such as episode trajectories interwoven with monte carlo playouts.
+    I have attempted to distinguish the RL parts and the search parts, but this algorithm is best 
+    appreciated when piecing these components together.
+    """
     def __init__(self, 
                  game: Game, 
                  mark, 
