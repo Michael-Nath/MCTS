@@ -14,10 +14,21 @@ SarsaMCTS is a TD-powered variant of the Monte Carlo Tree Seach algorithm.
 In this variant, we leverage the SARSA TD method with eligibility traces.
 The algorithim below is a high-fidelity implementation of Sarsa-UCT(\lambda) 
 as described by Vodopivec et. al. in "On Monte Carlo Tree Search and Reinforcement Learning".
+
+SarsaMCTS is a reinforcement learning + monte carlo tree search algorithm. As such, 
+you may see ideas such as episode trajectories interwoven with monte carlo playouts.
+I have attempted to distinguish the RL parts and the search parts, but this algorithm is best 
+appreciated when piecing these components together.
 """
 
 class SarsaMCTS(Player):
-    def __init__(self, game: Game, mark, opponent_mark, playout_policy: Policy, exploration_constant=1):
+    def __init__(self, 
+                 game: Game, 
+                 mark, 
+                 playout_policy: Policy, 
+                 exploration_constant: float =1,
+                 alpha: float =0.01,
+                 ):
         """
         Initializes the Sarsa MCTS algorithm with a game for it to play.
 
@@ -25,7 +36,12 @@ class SarsaMCTS(Player):
         game (Game): The `Game` object that the MCTS agent interfaces with.
         mark (int): The int representation of the mark the MCTS agent can use to make moves.
         opponent_mark (int): The int representation of the mark the opponent can use to make moves.
-        playout_policy: (Policy): The policy that the MCTS agent will follow when at a new state.
+        playout_policy (Policy): The policy that the MCTS agent will follow when at a new state.
+        exploration_constant (float): The hyperparamter of the UCB1 heuristic,\
+                                            intuitively controls the degree of exploration.
+        alpha (float): The learning rate that controls how sensitive nodes are to the TD update.
+        
+
         """
 
         self.game_obj = game
@@ -34,19 +50,21 @@ class SarsaMCTS(Player):
         self.root = SarsaNode(init_state)
         self.mark = mark
         self.discount_factor = 0.9
-        self.alpha = 0.01
+        self.alpha = self.alpha
         self.V_init: Callable[[SarsaNode], int] = lambda _ : 0
         # Keep track of worst and best returns for normalization downstream.
         self.worst_return = 1e9
         self.best_return = -1e9 
         self.V_playout = self.V_init
         self.trace_decay = 0.5
-        self.opponent_mark = opponent_mark
+        self.opponent_mark = 1 if self.mark == 0 else 0
         self.playout_policy = playout_policy
         self.exploration_constant = exploration_constant
 
         # Maintain an "experience" of previously played game trees. Equivalent to MCTS "learning".
         self.memory: dict[str: SarsaNode] = dict()
+        # 
+        self.episode: List[Tuple[Game, List[int], int, Game]] = []
 
     
     
@@ -55,7 +73,7 @@ class SarsaMCTS(Player):
         best_ucb = -np.inf
         actions = game_state.game_obj.get_all_next_actions()
         for a_i in actions:
-            if game_state.children_states.get(a_i, None) != None:
+            if game_state.children_states.get(a_i, None) is not None:
                child = game_state.children_states[a_i]
                exploit_value = get_normalized_value(child.V, self.worst_return, self.best_return)
                explore_bonus = self.exploration_constant \
@@ -69,7 +87,6 @@ class SarsaMCTS(Player):
         return best_a
     
     def generate_episode_(self, root_node: SarsaNode):
-        episode = []
         s = root_node.game_obj
         is_opponent_turn = root_node.is_opponent_turn
         while (not self.game_obj.is_terminal_state(s)[0]):
@@ -89,28 +106,27 @@ class SarsaMCTS(Player):
                 r = 0
             # EDGE CASE: We append a "throw-away" transition so that root node is backed up
             # for its root-to-next-state transition
-            if len(episode) == 0:
-                episode.append((None, None, 0, s))
-            episode.append((s, a, r, sp)) # s a r s' a' (well, almost)
+            if len(self.episode) == 0:
+                self.episode.append((None, None, 0, s))
+            self.episode.append((s, a, r, sp)) # s a r s' a' (well, almost)
             s = sp
-        return episode
     
-    def expand_tree_(self, episode: List[Tuple[Game, List[int], int, Game]]):
-        for transition in episode:
-            s, a, _, sp = transition
-            if self.memory.get(str(sp), None) is None:
-                # `sp` will be the first state not found in tree, so `s` MUST be in tree
-                parent_node = self.memory.get(str(s), None)
-                assert parent_node is not None
+    def expand_tree_(self):
+        for (s, a, _, sp) in self.episode[1:]:
+            parent_node = self.memory.get(str(s), None)
+            # By this algorithm's construction, `s` will ALWAYS have been memorized in game tree.
+            assert parent_node is not None
+            if a not in parent_node.children_states.keys():
                 init_v = self.V_init(sp)
-                parent_node.add_child(sp, init_v, a)
+                parent_node.add_child(sp, init_v, a) 
+            if self.memory.get(str(sp), None) is None:
                 self.memory[str(sp)] = parent_node.children_states[a] 
                 return
     
-    def backup_td_errors_(self, episode: List[Tuple[Game, List[int], int, Game]]):
+    def backup_td_errors_(self):
         td_cum = 0
         v_next = 0
-        for (_,_,r,sp) in episode[::-1]: # NOTE: we do not perform backup for root which is OPPONENT
+        for (_,_,r,sp) in self.episode[::-1]: # NOTE: we do not perform backup for root which is OPPONENT
             stringified_game_state = str(sp)
             if self.memory.get(stringified_game_state, None) is not None:
                 v_current = self.memory[stringified_game_state].V
@@ -141,22 +157,24 @@ class SarsaMCTS(Player):
         # Edge case: if current game state is already deciding, no point in planning.
         if self.game_obj.is_terminal_state(self.game_obj)[0]:
             return 
-        # We begin planning by examining the current state of the game. 
+        
         stringified_current_game_state = str(self.game_obj)
         self.root = self.memory.get(stringified_current_game_state, None)
         if self.root is None:
             self.root = self.memory[stringified_current_game_state] = \
             SarsaNode(self.game_obj, v_init=0, input_action=None, is_opponent=True)
-        episode = self.generate_episode_(self.root)
-        self.expand_tree_(episode)
-        self.backup_td_errors_(episode)
+
+        # Flush out old episode trajectory.
+        self.episode = []        
+        self.generate_episode_(self.root)
+        self.expand_tree_()
+        self.backup_td_errors_()
     
     def make_move(self):
         # Perform a one-step lookahead and greedily choose the move to take.
         max_value = -np.inf
         best_child = None
         for child in self.root.children_states.values():
-            
             if (child.V >= max_value):
                 max_value = child.V
                 best_child = child

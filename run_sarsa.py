@@ -18,9 +18,9 @@ def simulate(
     bot_policy = RandomTTTPolicy()
     bot_player = Player(TicTacToeBoard.indicator_to_mark(opponent_indicator))
     mcts_player = Player(TicTacToeBoard.indicator_to_mark(mcts_indicator))
-
-    print("Starting Game Board:\n")
-    print(tictactoe_game)
+    if verbose:
+        print("Starting Game Board:\n")
+        print(tictactoe_game)
     if manual_play and verbose:
         print(f"You are marking with {bot_player.mark}; MCTS agent is marking with {mcts_player.mark}")
     elif not manual_play and verbose:
@@ -64,7 +64,6 @@ def run_experiments(n_trials=10, verbose=False):
             opponent_indicator=0,
             n_tree_iters=1000,            
             verbose=verbose,
-            exploration_constant=1.5
         )
         if winner == 1:
             n_mcts_wins += 1
@@ -76,5 +75,5 @@ def run_experiments(n_trials=10, verbose=False):
     print(f"NUM OPPONENT WINS: {n_opponent_wins}/{n_trials} = {n_opponent_wins * 100 / n_trials}%")
     print(f"NUM DRAWS: {n_draws}/{n_trials} = {n_draws * 100 / n_trials}%")
 
-# run_experiments()
-simulate()
+run_experiments(n_trials=10, verbose=False)
+# simulate(manual_play=False, n_tree_iters=1, verbose=True)
