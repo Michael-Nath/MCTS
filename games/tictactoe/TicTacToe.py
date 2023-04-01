@@ -58,7 +58,7 @@ class TicTacToeBoard(Game):
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
-    def get_next_game_state(self, action, mark):
+    def get_next_game_state(self, action: np.ndarray, mark: str):
         '''
         Returns the next game state (s') from the current state (s) after taking
         `action`, and marked with `mark`
@@ -67,7 +67,7 @@ class TicTacToeBoard(Game):
         new_state[tuple(action)] = TicTacToeBoard.mark_to_indicator(mark)
         return TicTacToeBoard(new_state)
     
-    def get_next_game_states(self, mark) -> Tuple[List[Game], List[int]]:
+    def get_next_game_states(self, mark: str) -> Tuple[List[Game], List[int]]:
         '''
         Returns all reachable game states from given state, and marked with `mark`
         '''
@@ -79,7 +79,7 @@ class TicTacToeBoard(Game):
             input_actions.append(action)
         return pos_next_states, input_actions
     
-    def get_all_next_actions(self):
+    def get_all_next_actions(self) -> List[List[int]]:
         pos_indices = np.where(self.board == NO_MARK_INDICATOR)
         return np.array(list(zip(pos_indices))).reshape(-1, 2)
      
