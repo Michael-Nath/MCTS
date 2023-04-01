@@ -10,7 +10,7 @@ from typing import List, Tuple, Callable
 file: SarsaMCTS.py
 Author: Michael D. Nath
 
-SarsaMCTS is a TD-powered variant of the Monte Carlo Tree Seach algorithm.
+SarsaMCTS is a temporal difference (TD) powered variant of the Monte Carlo Tree Seach (MCTS) algorithm.
 In this variant, we leverage the SARSA TD method with eligibility traces.
 The algorithim below is a high-fidelity implementation of Sarsa-UCT(\lambda) 
 as described by Vodopivec et. al. in "On Monte Carlo Tree Search and Reinforcement Learning".
@@ -51,6 +51,7 @@ class SarsaMCTS(Player):
         
         # Equipping with MCTS Agent necessary setup regarding the game it will be playing.
         self.mark = mark 
+        super().__init__(self.mark)
         self.game_obj = game
         self.opponent_mark = opponent_mark
         
@@ -137,24 +138,12 @@ class SarsaMCTS(Player):
             # This state is memorized, invoke MCTS tree policy
             if self.memory.get(s, None) != None:
                 a = self.ucb1_tree_policy_(s) 
-            else: # This state is NOT memorized, invoke playout policy (still MCTS component).
+            else: # This state is NOT memorized, invoke playout policy (also MCTS theory).
                 a = self.playout_policy.select_action(s.state) # playout phase
             sp: Game = s.get_next_game_state(a, self.mark if is_opponent_turn else self.opponent_mark)
             is_opponent_turn = not is_opponent_turn
-            
-            r = self.game_obj.get_reward(sp)
-            
-            
-            
-            is_terminal, winner = self.game_obj.is_terminal_state(sp)
-            self. 
-            if is_terminal:
-                if winner == self.mark:
-                    r = 1
-                elif winner == self.opponent_mark:
-                    r = -1
-            else:
-                r = 0
+            # RL theory: instead of waiting for reward signal at termnial state, we get it as we go.
+            r = self.game_obj.get_reward(sp, self) 
             # EDGE CASE: We append a "throw-away" transition so that root node is included in backup
             # for its root-to-next-state transition contribution.
             if len(self.episode) == 0:
@@ -163,34 +152,83 @@ class SarsaMCTS(Player):
             s = sp
     
     def expand_tree_(self):
+        """
+        Internal function that expands out the game tree based on the current trajectory
+        This effectively endows the SarsaMCTS agent an adaptive representation policy, where
+        the current policy is to only expand the tree once per trajectory. Note that this policy
+        is somewhat memory-efficient since nodes are added once per step (MCTS-specific advantage), 
+        but is sample-inefficient (RL-specific disadvantage).
+        
+        Args:
+        None
+        
+        Side Effects:
+        `self.memory` is updated to memorize a new game state (sp in RL theory, child node in MCTS theory). 
+        This game state is also added as a child of its respective predecessor state (s in RL theory,
+        parent node in MCTS theory).
+
+        Returns:
+        None
+        """
         for (s, a, _, sp) in self.episode[1:]:
             parent_node = self.memory.get(str(s), None)
-            # By this algorithm's construction, `s` will ALWAYS have been memorized in game tree.
+            # By this algorithm's construction, `s` is guaranteed have been memorized in game tree.
             assert parent_node is not None
+            # Add this state as a child of its predecessor.
             if a not in parent_node.children_states.keys():
                 init_v = self.V_init(sp)
                 parent_node.add_child(sp, init_v, a) 
+            # "Expanding" the tree by including it in the memory buffer.
             if self.memory.get(str(sp), None) is None:
                 self.memory[str(sp)] = parent_node.children_states[a] 
                 return
     
     def backup_td_errors_(self):
+        """
+        Internal function that performs the MCTS backpropagation in a offline, TD fashion.
+        Eligibility traces are leveraged to average out all possible n-step returns from a given state
+        with mathematically convenient weighting properties. TD errors are accumulated as 
+        the episode is processed backwards, but the accumulation fades away by a factor of `trace_decay`
+        each time. The key intuition is that older states should generally receive less credit than the "game-winning"
+        states.
+        
+        Args:
+        None
+        
+        Side Effects:
+        
+        All states participating in the trajectory get their values backed up.\n
+        `self.best_return` is updated with the best return seen so far (used for normalization).\n
+        `self.worst_return` is updated with the worst return seen so far (used for normalization).\n
+        
+        Returns: 
+        None 
+        """
         td_cum = 0
         v_next = 0
-        for (_,_,r,sp) in self.episode[::-1]: # NOTE: we do not perform backup for root which is OPPONENT
+        # Process the episode backwards to implement accumulation of TD errors.
+        for (_,_,r,sp) in self.episode[::-1]:
             stringified_game_state = str(sp)
             if self.memory.get(stringified_game_state, None) is not None:
                 v_current = self.memory[stringified_game_state].V
             else:
+                # Since our representation policy forbids multiple expansions per episode, we estimate.
+                # MCTS theory
                 v_current = self.V_playout(sp)
                 
+            # RL theory - single step TD target is r + self.gamma * v_next
             single_step_td = r + self.gamma * v_next - v_current
+
+            # Eligibility Tracing 
+            # Diminish the accumulated TD and add single step TD, which will appear as 2,3,... -step
+            # returns to older and older states. 
             td_cum = (self.trace_decay * self.gamma * td_cum) + single_step_td
+            # conditional updating a consequence of representation policy.
             if self.memory.get(stringified_game_state, None) is not None:
                 node = self.memory[stringified_game_state]
-                n = node.n_visited = \
-                node.n_visited + 1
+                n = node.n_visited = node.n_visited + 1
                 alpha = 1 / n
+                # If state is heavily explored, it should become less and less sensitive to updates.
                 node.V += alpha * td_cum
                 if node.V >= self.best_return:
                     self.best_return = node.V
@@ -199,11 +237,21 @@ class SarsaMCTS(Player):
             v_next = v_current
     
     def step(self):
-        '''
+        """
+        Primary public function that executs one iteration of the SarsaMCTS search. 
         This is equivalent to a human player `thinking` about what move to make,
         given their opponent's most recent move. Here, the core assumption is that
-        this is called right after an opponent has made a move. 
-        '''
+        this is called right after an opponent has made a move.
+        
+        Args:
+        None
+        
+        Side Effects:
+        The tree becomes more and more experienced.
+
+        Returns:
+        None
+        """
        
         # Edge case: if current game state is already deciding, no point in planning.
         if self.game_obj.is_terminal_state(self.game_obj)[0]:
@@ -217,11 +265,24 @@ class SarsaMCTS(Player):
 
         # Flush out old episode trajectory.
         self.episode = []        
+        # Selection / Simulation
         self.generate_episode_(self.root)
+        # Expansion
         self.expand_tree_()
+        # Backpropagation
         self.backup_td_errors_()
     
-    def make_move(self):
+    def make_move(self) -> np.ndarray:
+        """
+        Public function that causes the MCTS agent to pick what it thinks is the most promising move
+        to take given what it has learned through search.
+        
+        Args:
+        None
+        
+        Returns:
+        action (np.ndarray): The best action to take.
+        """
         # Perform a one-step lookahead and greedily choose the move to take.
         max_value = -np.inf
         best_child = None
@@ -229,9 +290,22 @@ class SarsaMCTS(Player):
             if (child.V >= max_value):
                 max_value = child.V
                 best_child = child
-        return best_child.input_action
-              
+        action = best_child.input_action
+        return action
+
     def internal_print_game_tree_(self, root: SarsaNode):
+        """
+        Debugging function that prints out the game tree in a somewhat understandable way?
+
+        Args:
+        root (`SarsaNode`): the root node from which to print the corresponding subtree
+        
+        Side Effects:
+        Prints the game tree.    
+        
+        Returns:
+        None
+        """
         if self.game_obj.is_terminal_state(root.game_obj)[0]:
             return
         print(root)
@@ -239,6 +313,10 @@ class SarsaMCTS(Player):
             self.internal_print_game_tree_(child)
         
     def print_game_tree(self):
+        """
+        Public function to print out the game tree. Refer to internal_print_game_tree_ for 
+        under-the-hood goodness.
+        """
         self.internal_print_game_tree_(self.root)    
         
     def __str__(self):

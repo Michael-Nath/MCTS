@@ -22,9 +22,7 @@ class TicTacToeBoard(Game):
     def mark_move(self, player: Player, row, col):
         translated_mark = TicTacToeBoard.mark_to_indicator(player.mark)
         self.board[row, col] = translated_mark
-    
-    
-     
+        
     @staticmethod 
     def mark_to_indicator(mark) -> int:
         return X_MARK_INDICATOR if mark == 'X' else O_MARK_INDICATOR
@@ -37,13 +35,26 @@ class TicTacToeBoard(Game):
             return 'O'
         return '_'
 
-    def copy_(self) -> Game:
-        return TicTacToeBoard(self.board.copy())
-    
     @staticmethod
     def get_init_game_state() -> np.ndarray:
         return np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)
 
+    @staticmethod 
+    def get_reward(game_obj: 'TicTacToeBoard', player: Player) -> int:
+        # This is a very sparse reward signaled environment. 
+        # Wins give +1, Losses give -1, Draws give +0, and non-terminal states give +0.
+        is_terminal, winner = TicTacToeBoard.is_terminal_state(game_obj)
+        if not is_terminal:
+            return 0
+        if winner == player.mark:
+            return 1
+        elif winner == TicTacToeBoard.indicator_to_mark(NO_MARK_INDICATOR):
+            return 0
+        return -1
+        
+    def copy_(self) -> Game:
+        return TicTacToeBoard(self.board.copy())
+    
     def get_current_game_state(self) -> np.ndarray:
         return self.board
     
@@ -53,7 +64,7 @@ class TicTacToeBoard(Game):
         `action`, and marked with `mark`
         '''
         new_state = self.board.copy()
-        new_state[tuple(action)] = mark
+        new_state[tuple(action)] = TicTacToeBoard.mark_to_indicator(mark)
         return TicTacToeBoard(new_state)
     
     def get_next_game_states(self, mark) -> Tuple[List[Game], List[int]]:

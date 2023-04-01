@@ -57,7 +57,7 @@ def run_experiments(n_trials=100, verbose=False):
             manual_play=False,
             mcts_indicator=1,
             opponent_indicator=0,
-            n_tree_iters=10000,            
+            n_tree_iters=1000,            
             verbose=verbose,
             exploration_constant=1.5
         )
@@ -71,4 +71,4 @@ def run_experiments(n_trials=100, verbose=False):
     print(f"NUM OPPONENT WINS: {n_opponent_wins}/{n_trials} = {n_opponent_wins * 100 / n_trials}%")
     print(f"NUM DRAWS: {n_draws}/{n_trials} = {n_draws * 100 / n_trials}%")
 
-run_experiments(n_trials=10, verbose=False)
+run_experiments(n_trials=100, verbose=False)

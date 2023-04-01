@@ -49,7 +49,8 @@ class Game:
         """
         raise NotImplementedError
     @staticmethod
-    def 
+    def get_reward(game_obj: 'Game', player: Player) -> int:
+        raise NotImplementedError
     def get_next_game_states(self, state, mark):
         raise NotImplementedError
     

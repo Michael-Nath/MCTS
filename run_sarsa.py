@@ -6,18 +6,24 @@ import numpy as np
 
 def simulate(
     manual_play=False, 
-    mcts_indicator=1,
-    opponent_indicator=0,
+    mcts_mark="X",
+    opponent_mark="O",
     n_tree_iters=10000,
     verbose=False,
     exploration_constant=1/np.sqrt(2)
     ):
 
     tictactoe_game = TicTacToeBoard()
-    mcts_brain = SarsaMCTS(tictactoe_game, mcts_indicator, opponent_indicator, RandomTTTPolicy(), exploration_constant=exploration_constant)
+    mcts_brain = SarsaMCTS(tictactoe_game, 
+                           mcts_mark, 
+                           opponent_mark, 
+                           RandomTTTPolicy(), 
+                           exploration_constant=exploration_constant,
+                           trace_decay=0.99,
+                           gamma=0.90)
     bot_policy = RandomTTTPolicy()
-    bot_player = Player(TicTacToeBoard.indicator_to_mark(opponent_indicator))
-    mcts_player = Player(TicTacToeBoard.indicator_to_mark(mcts_indicator))
+    bot_player = Player(opponent_mark)
+    mcts_player = Player(mcts_mark)
     if verbose:
         print("Starting Game Board:\n")
         print(tictactoe_game)
@@ -60,8 +66,8 @@ def run_experiments(n_trials=10, verbose=False):
     for _ in range(n_trials):
         winner = simulate(
             manual_play=False,
-            mcts_indicator=1,
-            opponent_indicator=0,
+            mcts_mark="X",
+            opponent_mark="O",
             n_tree_iters=1000,            
             verbose=verbose,
         )
@@ -76,4 +82,4 @@ def run_experiments(n_trials=10, verbose=False):
     print(f"NUM DRAWS: {n_draws}/{n_trials} = {n_draws * 100 / n_trials}%")
 
 run_experiments(n_trials=10, verbose=False)
-# simulate(manual_play=False, n_tree_iters=1, verbose=True)
+# simulate(manual_play=True, n_tree_iters=10000, verbose=True)
