@@ -42,13 +42,14 @@ class Game:
     def is_terminal_state(game_obj): 
         """
         
-        return:
+        Returns:
         is_terminal (bool): A boolean indicating whether this indeed is a terminal state or not.
         winner (Player | None): If state terminal, this is a `Player` object returning the winner 
                                 (or None if tie.)
         """
         raise NotImplementedError
-    
+    @staticmethod
+    def 
     def get_next_game_states(self, state, mark):
         raise NotImplementedError
     
