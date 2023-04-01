@@ -1,7 +1,7 @@
 from games.tictactoe.TicTacToePlayer import TicTacToePlayer
 from games.Player import Player
 from games.Game import Game
-from typing import Union
+from typing import Union, Tuple, List
 from pprint import pprint
 import numpy as np
 
@@ -56,7 +56,7 @@ class TicTacToeBoard(Game):
         new_state[tuple(action)] = mark
         return TicTacToeBoard(new_state)
     
-    def get_next_game_states(self, mark):
+    def get_next_game_states(self, mark) -> Tuple[List[Game], List[int]]:
         '''
         Returns all reachable game states from given state, and marked with `mark`
         '''
