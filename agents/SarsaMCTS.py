@@ -1,7 +1,7 @@
 import numpy as np
-from SarsaNode import SarsaNode
+from agents.SarsaNode import SarsaNode
 from games.Game import Game
-from MCTSAgent import MCTSAgent
+from agents.MCTSAgent import MCTSAgent
 from policies.Policy import Policy
 from utils import get_normalized_value
 from typing import List, Tuple, Callable

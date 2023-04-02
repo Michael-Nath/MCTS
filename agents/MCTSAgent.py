@@ -1,6 +1,6 @@
 from games.Player import Player
 from games.Game import Game
-from MCTSNode import MCTSNode
+from agents.MCTSNode import MCTSNode
 from policies.Policy import Policy
 from typing import Optional, Any
 class MCTSAgent(Player):

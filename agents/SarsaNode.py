@@ -1,5 +1,5 @@
 from typing import Tuple
-from MCTSNode import MCTSNode
+from agents.MCTSNode import MCTSNode
 from games.Game import Game
 
 class SarsaNode(MCTSNode):

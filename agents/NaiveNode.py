@@ -1,6 +1,6 @@
 from utils import Outcome
 from games.Game import Game
-from MCTSNode import MCTSNode
+from agents.MCTSNode import MCTSNode
 
 class NaiveNode(MCTSNode):
     def __init__(self, game_state: Game, input_action = None, is_opponent=False):

@@ -1,4 +1,4 @@
-from NaiveMCTS import NaiveMCTS
+from agents.NaiveMCTS import NaiveMCTS
 from games.tictactoe.TicTacToe import TicTacToeBoard
 from games.Player import Player
 from policies.RandomPolicy import RandomTTTPolicy

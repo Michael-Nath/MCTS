@@ -1,4 +1,4 @@
-from SarsaMCTS import SarsaMCTS
+from agents.SarsaMCTS import SarsaMCTS
 from games.tictactoe.TicTacToe import TicTacToeBoard
 from games.Player import Player
 from policies.RandomPolicy import RandomTTTPolicy

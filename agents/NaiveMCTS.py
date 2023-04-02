@@ -3,9 +3,9 @@ file: NaiveMCTS.py
 Author: Michael D. Nath
 """
 import numpy as np
-from NaiveNode import NaiveNode
+from agents.NaiveNode import NaiveNode
 from games.Game import Game
-from MCTSAgent import MCTSAgent
+from agents.MCTSAgent import MCTSAgent
 from games.Player import Player
 from collections import deque
 from policies.Policy import Policy
