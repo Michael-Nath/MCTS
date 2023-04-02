@@ -1,20 +1,17 @@
 from typing import Tuple
-import numpy as np
-from utils import Outcome
+from MCTSNode import MCTSNode
 from games.Game import Game
 
-class SarsaNode:
+class SarsaNode(MCTSNode):
     def __init__(self, 
                  game_state: Game, 
                  v_init: int = 0, 
                  input_action = None, 
                  is_opponent=False
                  ) -> None:
-        self.game_obj: Game = game_state
+        super().__init__(game_state, input_action, is_opponent)
         self.V = v_init
         self.n_visited = 0
-        self.input_action = input_action
-        self.is_opponent_turn = is_opponent
         self.children_states: dict[Tuple[int, int]: SarsaNode] = dict()
 
     def add_child(self, game_obj, v_init, input_action) -> None:

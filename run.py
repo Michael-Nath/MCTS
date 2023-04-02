@@ -56,11 +56,11 @@ def run_experiments(n_trials=100, verbose=False):
     for _ in range(n_trials):
         winner = simulate(
             manual_play=False,
-            mcts_mark=1,
-            opponent_mark=0,
-            n_tree_iters=1000,            
+            mcts_mark="X",
+            opponent_mark="O",
+            n_tree_iters=10,            
             verbose=verbose,
-            exploration_constant=1.5
+            exploration_constant=1
         )
         if winner == 1:
             n_mcts_wins += 1
@@ -72,5 +72,5 @@ def run_experiments(n_trials=100, verbose=False):
     print(f"NUM MCTS WINS: {n_mcts_wins}/{n_trials} = {n_mcts_wins * 100 / n_trials}%") 
     print(f"NUM OPPONENT WINS: {n_opponent_wins}/{n_trials} = {n_opponent_wins * 100 / n_trials}%")
     print(f"NUM DRAWS: {n_draws}/{n_trials} = {n_draws * 100 / n_trials}%")
-# run_experiments(n_trials=100, verbose=False)
-simulate(manual_play=False, verbose=True)
+run_experiments(n_trials=100, verbose=False)
+# simulate(manual_play=False, n_tree_iters=100, verbose=False)

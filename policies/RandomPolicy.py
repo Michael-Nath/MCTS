@@ -1,4 +1,3 @@
-from games.tictactoe import TicTacToe
 import numpy as np
 import random
 from policies.Policy import Policy

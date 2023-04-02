@@ -12,6 +12,26 @@ GRID_ROWS = 3
 GRID_COLS = 3 
 
 class TicTacToeBoard(Game):
+    """
+    Class TicTacToeBoard:
+
+    A class representing the Tic Tac Toe game environment, inheriting from the `Game` base class. 
+    It provides a comprehensive interface for interacting with the game, handling game state transitions, 
+    and computing player rewards. The TicTacToeBoard class is designed to facilitate the development of AI agents and game simulations.
+
+    Main Features:
+    Maintains a 3x3 game board represented as a NumPy array, with cell values set to -1 (empty), 0 ('O' mark), or 1 ('X' mark).
+    Offers methods for marking moves, checking move validity, and generating next game states based on player actions.
+    Provides utility functions for translating between mark symbols ('X', 'O') and their corresponding integer indicators (1, 0).
+    Supports custom game configurations, allowing for advanced testing and simulations.
+    Implements reward computation for reinforcement learning, with a sparse reward structure (+1 for wins, -1 for losses, and 0 for draws or non-terminal states).
+    Allows for copying the game board and accessing the current game state, enabling easy state manipulation during agent training and evaluation.
+    
+    Usage:
+    Create an instance of the TicTacToeBoard class to represent a game environment, 
+    and use its provided methods to interact with the game, make moves, and compute rewards. 
+    The class is designed to be compatible with AI agent training, reinforcement learning, and game simulation scenarios.
+    """
     def __init__(self, configuration:Union[np.ndarray, None] = None):
         if configuration is None:
             self.board = np.full((GRID_ROWS,GRID_COLS), NO_MARK_INDICATOR)

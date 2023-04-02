@@ -1,15 +1,14 @@
 import numpy as np
 from SarsaNode import SarsaNode
 from games.Game import Game
-from games.Player import Player
+from MCTSAgent import MCTSAgent
 from policies.Policy import Policy
 from utils import get_normalized_value
 from typing import List, Tuple, Callable
 
-class SarsaMCTS(Player):
+class SarsaMCTS(MCTSAgent):
     """
     `SarsaMCTS` is a temporal difference (TD) powered variant of the Monte Carlo Tree Seach (MCTS) algorithm.
-    In this variant, we leverage the SARSA TD method with eligibility traces.
     The algorithim below is a high-fidelity implementation of Sarsa-UCT(\lambda) 
     as described by Vodopivec et. al. in "On Monte Carlo Tree Search and Reinforcement Learning".
 
@@ -63,32 +62,19 @@ class SarsaMCTS(Player):
         """
 
         
-        # Equipping with MCTS Agent necessary setup regarding the game it will be playing.
-        self.mark = mark 
-        super().__init__(self.mark)
-        self.game_obj = game
-        self.opponent_mark = opponent_mark
-        
-        # Configuring internals of MCTS game tree
-        init_state = game.get_init_game_state()
-        self.root = SarsaNode(init_state)
+        # Capture the arguments fed to this class so that variables can be init by underlying ABC.
+        saved_args = locals()
+        del saved_args['self']
+        del saved_args['__class__']
+        super().__init__(**saved_args)
+        self.root = SarsaNode(self.init_state)
         self.V_init: Callable[[SarsaNode], int] = lambda _ : 0 
         self.V_playout = self.V_init
 
         # Keep track of worst and best returns for normalization downstream.
         self.worst_return = 1e9
         self.best_return = -1e9 
-
-        # Initializing Hyperparameters
-        self.gamma = gamma
-        self.alpha = alpha
-        self.trace_decay = trace_decay
-        self.playout_policy = playout_policy
-        self.exploration_constant = exploration_constant
-
-        # Maintain an "experience" of previously played game trees. Equivalent to MCTS "learning".
-        # This represents the memorized part of the state space. 
-        self.memory: dict[str: SarsaNode] = dict()
+        
         # Store the trajectory the MCTS agent takes in the game environment.
         # As this is also a SARSA agent, the trajectories take the namesake (s,a,r,s',a') form
         # But, a' is omitted since it is never needed for value computation (TD backwards mechanism). 
@@ -249,7 +235,30 @@ class SarsaMCTS(Player):
                 if node.V <= self.worst_return:
                     self.worst_return = node.V - 1e-9 # additional term prevents divide by zero issue
             v_next = v_current
+   
+   
+    def selection_(self):
+        self.generate_episode_(self.root)
+
+    # Simulation is already taken care of during selection step.
+    def simulation_(self):
+        return
     
+    def expansion_(self):
+        self.expand_tree_()
+        
+    def backpropagation_(self):
+        self.backup_td_errors_()
+                
+    def pre_step_setup_(self):
+        stringified_current_game_state = str(self.game_obj)
+        self.root = self.memory.get(stringified_current_game_state, None)
+        if self.root is None:
+            self.root = self.memory[stringified_current_game_state] = \
+            SarsaNode(self.game_obj, v_init=0, input_action=None, is_opponent=True) 
+        # Flush out old episode trajectory.
+        self.episode = []       
+          
     def step(self):
         """
         Primary public function that executs one iteration of the SarsaMCTS search. 
@@ -269,22 +278,12 @@ class SarsaMCTS(Player):
        
         # Edge case: if current game state is already deciding, no point in planning.
         if self.game_obj.is_terminal_state(self.game_obj)[0]:
-            return 
-        
-        stringified_current_game_state = str(self.game_obj)
-        self.root = self.memory.get(stringified_current_game_state, None)
-        if self.root is None:
-            self.root = self.memory[stringified_current_game_state] = \
-            SarsaNode(self.game_obj, v_init=0, input_action=None, is_opponent=True)
-
-        # Flush out old episode trajectory.
-        self.episode = []        
-        # Selection / Simulation
-        self.generate_episode_(self.root)
-        # Expansion
-        self.expand_tree_()
-        # Backpropagation
-        self.backup_td_errors_()
+            return
+        self.pre_step_setup_()
+        self.selection_()
+        self.simulation_()
+        self.expansion_()
+        self.backpropagation_()
     
     def make_move(self) -> np.ndarray:
         """

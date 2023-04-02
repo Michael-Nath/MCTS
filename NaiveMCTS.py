@@ -3,15 +3,16 @@ file: NaiveMCTS.py
 Author: Michael D. Nath
 """
 import numpy as np
-from MCTSNode import MCTSNode
+from NaiveNode import NaiveNode
 from games.Game import Game
+from MCTSAgent import MCTSAgent
 from games.Player import Player
 from collections import deque
 from policies.Policy import Policy
 from utils import Outcome
 import random 
 
-class NaiveMCTS(Player):
+class NaiveMCTS(MCTSAgent):
     """
     NaiveMCTS: A Monte Carlo Tree Search (MCTS) implementation for turn-based games
     This module implements the NaiveMCTS class, a MCTS algorithm based on the description provided on the Wikipedia page. 
@@ -39,19 +40,13 @@ class NaiveMCTS(Player):
         opponent_mark (int): The int representation of the mark the opponent can use to make moves.
         playout_policy: (Policy): The policy that the MCTS agent will follow when at a new state.
         """
-
-        self.game_obj = game
-        init_state = game.get_init_game_state()
-        # We begin with the initial state of the game we're playing
-        self.root = MCTSNode(init_state)
+        saved_args = locals()
+        del saved_args['self']
+        del saved_args['__class__']
+        super().__init__(**saved_args) 
+        self.root = NaiveNode(self.init_state)
         self.mark = mark
-        self.path: deque[MCTSNode] = deque([])
-        self.opponent_mark = opponent_mark
-        self.playout_policy = playout_policy
-        self.exploration_constant = exploration_constant
-
-        # Maintain an "experience" of previously played game trees. Equivalent to MCTS "learning".
-        self.memory: dict[str: MCTSNode] = dict()
+        self.path: deque[NaiveNode] = deque([])
 
     def perform_lookahead(self, root):
         '''
@@ -80,17 +75,17 @@ class NaiveMCTS(Player):
                 most_promising_node = child 
         self.perform_lookahead(most_promising_node) 
 
-    def create_children_for_node(self, node: MCTSNode):
+    def create_children_for_node(self, node: NaiveNode):
         # get all possible next states
         possible_next_states, input_actions = \
         self.game_obj.get_next_game_states(self.mark)
         node.add_children(possible_next_states, input_actions) 
     
-    def determine_playout_node(self, parent_node: MCTSNode) -> MCTSNode:
+    def determine_playout_node(self, parent_node: NaiveNode) -> NaiveNode:
         # For now we will just pick uniformly among the children of the former leaf node.
         return random.choice(list(parent_node.children_states))
     
-    def perform_playout(self, playout_node: MCTSNode) -> Outcome:
+    def perform_playout(self, playout_node: NaiveNode) -> Outcome:
         simulated_game_obj = playout_node.game_obj.copy_()
         simulated_opponent = Player(self.opponent_mark)
         is_opponent_turn = playout_node.is_opponent_turn
@@ -112,46 +107,57 @@ class NaiveMCTS(Player):
     def backpropagate_outcome(self, outcome: Outcome):
         # for each node in the path from root to non-terminal leaf, update its stored statistics.
         for node in self.path:
-            node.update_stats(outcome) 
+            node.update_stats(outcome)     
     
-    def step(self):
-        '''
-        This is equivalent to a human player `thinking` about what move to make,
-        given their opponent's most recent move. Here, the core assumption is that
-        this is called right after an opponent has made a move. 
-        '''
-       
-        # Edge case: if current game state is already deciding, no point in planning.
-        if self.game_obj.is_terminal_state(self.game_obj)[0]:
-            return 
-        
-        # Flush out old path to prepare for next iteration of step().
-        self.path = deque([])
-
-        # We begin planning by examining the current state of the game. 
-        stringified_current_game_state = np.array2string(self.game_obj.get_current_game_state())
-        self.root = self.memory.get(stringified_current_game_state, None)
-        if self.root is None:
-            self.root = self.memory[stringified_current_game_state] = \
-            MCTSNode(self.game_obj, None, is_opponent=True)
-
+    def selection_(self) -> NaiveNode:
         self.perform_lookahead(self.root)
         # At this point, self.path should be populated with a carve-out of game tree.
         leaf_node = self.path[-1]
         # We will construct the next game state from the terminal game state
         # determine if root is terminal (game state is deciding)
-        is_terminal, winner = self.game_obj.is_terminal_state(leaf_node.game_obj)
+        is_terminal, _ = self.game_obj.is_terminal_state(leaf_node.game_obj)
         if is_terminal:
-            return
+            return None
         else:
-            self.create_children_for_node(leaf_node)
+            self.expansion_(leaf_node)
             playout_node = self.determine_playout_node(leaf_node)
             # Include this playout node as an additional target of backpropagation.
             self.path.append(playout_node)
-            # Now we perform a playout from this playout node, backpropagating after playout completion.
-            outcome = self.perform_playout(playout_node)
-        # Update internal statistics of all nodes in carved out path.
+        return playout_node
+    
+    
+    def expansion_(self, leaf_node: NaiveNode):
+        self.create_children_for_node(leaf_node)
+    
+    def simulation_(self, playout_node: NaiveNode) -> Outcome:
+        outcome = self.perform_playout(playout_node)
+        return outcome
+    
+    def backpropagation_(self, outcome: Outcome):
         self.backpropagate_outcome(outcome)
+    
+    def pre_step_setup_(self):
+        # Flush out old path to prepare for next iteration of step().
+        self.path = deque([])
+        # We begin planning by examining the current state of the game. 
+        stringified_current_game_state = np.array2string(self.game_obj.get_current_game_state())
+        self.root = self.memory.get(stringified_current_game_state, None)
+        if self.root is None:
+            self.root = self.memory[stringified_current_game_state] = \
+            NaiveNode(self.game_obj, None, is_opponent=True) 
+    
+    def step(self):
+        # Edge case: if current game state is already deciding, no point in planning.
+        if self.game_obj.is_terminal_state(self.game_obj)[0]:
+            return 
+        self.pre_step_setup_()
+        playout_node = self.selection_()
+        if playout_node is None:
+            return
+        # Now we perform a playout from this playout node, backpropagating after playout completion.
+        outcome = self.simulation_(playout_node)
+        # Update internal statistics of all nodes in carved out path.
+        self.backpropagation_(outcome)
     
     def make_move(self):
         # Perform a one-step lookahead and greedily choose the move to take.
@@ -163,7 +169,7 @@ class NaiveMCTS(Player):
                 best_child = child
         return best_child.input_action
               
-    def internal_print_game_tree_(self, root: MCTSNode):
+    def internal_print_game_tree_(self, root: NaiveNode):
         if self.game_obj.is_terminal_state(root.game_obj)[0]:
             return
         print(root)

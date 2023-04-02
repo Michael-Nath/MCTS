@@ -1,6 +1,8 @@
 from games.Player import Player
 from games.Game import Game
+from MCTSNode import MCTSNode
 from policies.Policy import Policy
+from typing import Optional, Any
 class MCTSAgent(Player):
     """
     MCTSAgent: Abstract Base Class for Monte Carlo Tree Search (MCTS) Agents
@@ -22,5 +24,76 @@ class MCTSAgent(Player):
                  mark: str,
                  opponent_mark: str,
                  playout_policy: Policy,
-                 
-                 )
+                 exploration_constant: int,
+                 alpha: Optional[float] = None,
+                 gamma: Optional[float] = None,
+                 trace_decay: Optional[float] = None,
+                 ):
+        # Equipping MCTS Agent with necessary setup regarding the game it will be playing
+        self.mark = mark
+        super().__init__(self.mark)
+        self.opponent_mark = opponent_mark
+        self.game_obj = game
+        # Configuring internals of MCTS game tree
+        self.init_state = game.get_init_game_state()
+        # Initializing Hyperparameters
+        self.exploration_constant = exploration_constant
+        self.alpha = alpha
+        self.gamma = gamma
+        self.trace_decay = trace_decay
+        self.playout_policy = playout_policy
+        # Maintain an "experience" of previously played game trees. Equivalent to MCTS "learning".
+        # This represents the memorized part of the state space. 
+        self.memory: dict[str: MCTSNode] = dict()
+    
+    
+    def pre_step_setup_(self):
+        """
+        Internal function that gets the MCTSAgent set up before it steps.
+        """
+        raise NotImplementedError
+     
+    def step(self) -> None:
+        """
+        Performs a single iteration of the MCTS algorithm by executing the selection, expansion, simulation, and backpropagation steps. 
+        This method should be implemented by subclasses to follow the specific MCTS algorithm's design, leveraging the other methods provided in the subclass.
+        
+        This is equivalent to a human player `thinking` about what move to make, given their opponent's most recent move. 
+        Here, the core assumption is that this is called right after an opponent has made a move. 
+        """
+        raise NotImplementedError
+    
+    # NOTE: It is completely up to the specific variant to introduce whatever args/kwargs to 
+    # the method signature, as long the variant achieves the purpose of each method.
+    def selection_(self, *args, **kwargs) -> Any:
+        """
+        Performs the selection step of the MCTS algorithm by traversing the game tree according to a tree policy. 
+        This method should be implemented by subclasses, specifying the tree policy and additional arguments or keyword arguments as needed. 
+        The goal of the selection step is to choose the most promising node to expand.
+        """
+        raise NotImplementedError
+    def expansion_(self, *args, **kwargs) -> Any:
+        """
+        Performs the expansion step of the MCTS algorithm by generating all possible child nodes from a given leaf node. 
+        This method should be implemented by subclasses, considering the specific MCTS algorithm's requirements 
+        and additional arguments or keyword arguments as needed. The expansion step helps explore new game states and potential moves.
+        """
+        raise NotImplementedError
+    def simulation_(self, *args, **kwargs) -> Any:
+        """
+        Performs the simulation step of the MCTS algorithm by executing a rollout (also known as a playout) 
+        from the expanded node to a terminal state using a simulation policy. This method should be 
+        implemented by subclasses, specifying the simulation policy and additional arguments or keyword arguments as needed. 
+        The simulation step provides an estimate of the value for the expanded node based on the outcome of the playout.
+        """
+        raise NotImplemented
+    def backpropagation_(self, *args, **kwargs) -> Any:
+        """
+        Performs the backpropagation step of the MCTS algorithm by updating the value estimates for each visited node, 
+        propagating the outcome of the simulation from the terminal state back to the root node. 
+        This method should be implemented by subclasses, considering the specific MCTS algorithm's requirements and 
+        additional arguments or keyword arguments as needed. 
+        Backpropagation enables the agent to learn from the simulation results and refine its decision-making process.
+        """
+        raise NotImplemented
+    
